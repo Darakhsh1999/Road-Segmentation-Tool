@@ -1,0 +1,2 @@
+- think how propagating forward will be done if number of points changes from frame skip
+- splines support

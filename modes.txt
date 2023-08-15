@@ -1,0 +1,13 @@
+
+INSERT
+- add circles
+
+EDIT
+- move circles
+- change circle mode (double click)
+
+CAR
+- add car boxes
+
+VISUAL
+- nothing
