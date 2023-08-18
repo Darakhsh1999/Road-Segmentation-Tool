@@ -22,29 +22,33 @@ from scipy.interpolate import UnivariateSpline
 
 ### Spline test
 
-import numpy as np
-from scipy.interpolate import interp1d
-import matplotlib.pyplot as plt
+#import numpy as np
+#from scipy.interpolate import interp1d
+#import matplotlib.pyplot as plt
 
 
-# Define some points:
-points = np.array([[0, 1, 0.5],
-                   [1, 1.5, -1]]).T  # a (nbre_points x nbre_dim) array
+## Define some points:
+#points = np.array([[0, 0.8, 0.3, 1, 2, 3],
+                   #[1, 2.5, -1, 1.7, 3.5, 4.0]]).T  # a (nbre_points x nbre_dim) array
 
-# Linear length along the line:
-distance = np.cumsum( np.sqrt(np.sum( np.diff(points, axis=0)**2, axis=1 )) )
-distance = np.insert(distance, 0, 0)/distance[-1]
+## Linear length along the line:
+#distance = np.cumsum( np.sqrt(np.sum( np.diff(points, axis=0)**2, axis=1 )) )
+#distance = np.insert(distance, 0, 0)/distance[-1]
 
-# Interpolation for different methods:
-alpha = np.linspace(0, 1, 75)
+## Interpolation for different methods:
+#alpha = np.linspace(0, 1, 75)
 
-interpolator =  interp1d(distance, points, kind="quadratic", axis=0)
-interpolated_points = interpolator(alpha)
+#interpolator =  interp1d(distance, points, kind=6, axis=0)
+#interpolated_points = interpolator(alpha)
 
-# Graph:
-plt.figure(figsize=(7,7))
-plt.plot(*interpolated_points.T, '-', label="cubic")
+## Graph:
+#plt.figure(figsize=(7,7))
+#plt.plot(*interpolated_points.T, '-', label="cubic")
 
-plt.plot(*points.T, 'ok', label='original points')
-plt.axis('equal'); plt.legend(); plt.xlabel('x'); plt.ylabel('y')
-plt.show()
+#plt.plot(*points.T, 'ok', label='original points')
+#plt.axis('equal'); plt.legend(); plt.xlabel('x'); plt.ylabel('y')
+#plt.show()
+
+
+A = np.array([[1,1],[1,1],[2,1],[1,2],[2,5]])
+print(np.unique(A, axis=0))

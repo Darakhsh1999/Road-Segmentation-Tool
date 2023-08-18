@@ -92,6 +92,9 @@ class SegTool():
                 elif (e == cv2.EVENT_RBUTTONDOWN): # MB2 down (change type)
 
                     if (min_idx == 0) or (min_idx == len(self.path)-1): return # Can't change edge points
+
+                    if self.check_spline_change(min_idx): return 
+
                     old_point = self.path[min_idx]
                     new_type = "spline" if old_point.type == "linear" else "linear"
                     px, py = old_point.pos
@@ -163,7 +166,7 @@ class SegTool():
         """ Propagate forward in the source feed """
         for _ in range(self.config.frame_skipe):
             _, frame = self.source.read()
-        self.frame = frame
+        self.frame: np.ndarray = frame
         self.frame0 = frame.copy() # raw frame
         self.render(self.mode)
 
@@ -198,18 +201,17 @@ class SegTool():
                     )
                 elif point.type == "spline":
 
-                    spline_pixels = utils.spline_curve(self.path[point_idx-1:point_idx+2]) # (x,y)
+                    if self.path[point_idx-1].type == "spline": continue # only render first of consecutive spline points
 
+                    next_idx = point_idx+1 if (self.path[point_idx+1].type == "spline") else point_idx
+                    spline_pixels = utils.spline_curve(self.path[point_idx-1:next_idx+2]) # (x,y)
+
+                    # Edge detection
                     spline_pixels = np.maximum(spline_pixels, 0)
                     spline_pixels[:,0] = np.minimum(spline_pixels[:,0], self.frame_shape[1]-1)
                     spline_pixels[:,1] = np.minimum(spline_pixels[:,1], self.frame_shape[0]-1)
 
                     self.frame[spline_pixels[:,1],spline_pixels[:,0],:] = self.config.color
-
-
-        # Render highlight point
-        if self.highlight:
-            cv2.circle(self.frame, self.path[-1].pos, **self.config.highlight_kwargs)
 
         # Render fill
         if self.path and (self.path[-1].type == "end"):
@@ -224,10 +226,19 @@ class SegTool():
 
             # Fill in the polygon
             if not self.moving_circle:
-                pts = np.array([point.pos for point in self.path])
-                poly_frame = self.frame.copy()
-                cv2.fillPoly(poly_frame, pts=[pts], color=config.color)
-                self.frame = cv2.addWeighted(self.frame, config.alpha, poly_frame, 1-config.alpha, 0)
+
+                color_mask = cv2.inRange(self.frame, self.config.color, self.config.color) # 0/255 mask, np-uint8
+                contours, _ = cv2.findContours(color_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+
+                contour_image = self.frame0.copy()
+                for cont in contours:
+                    cv2.drawContours(contour_image, [cont], contourIdx=-1, color=self.config.color, thickness=cv2.FILLED)
+                
+                self.frame = cv2.addWeighted(self.frame, config.alpha, contour_image, 1-config.alpha, 0)
+
+        # Render highlight point
+        if self.highlight:
+            cv2.circle(self.frame, self.path[-1].pos, **self.config.highlight_kwargs)
 
 
     def update_mode(self, mode):
@@ -240,6 +251,17 @@ class SegTool():
                 return True
         else:
             return False
+    
+    def check_spline_change(self, min_idx):
+        """ Returns True if cannot change type of point """
+
+        if (self.path[min_idx-1].type == "spline") and (self.path[min_idx+1].type == "spline"):
+            return True # Surrounded
+        if (min_idx > 1) and (self.path[min_idx-1].type == "spline") and (self.path[min_idx-2].type == "spline"):  
+            return True # 2 behind
+        if (min_idx < len(self.path)-2) and (self.path[min_idx+1].type == "spline") and (self.path[min_idx+2].type == "spline"):  
+            return True # 2 infront
+        return False
 
     def delete_point(self, idx):
 

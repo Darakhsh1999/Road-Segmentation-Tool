@@ -55,17 +55,18 @@ def spline_curve(path_list: list[Point]):
 
     # calculate distance
     distance = np.cumsum(np.sqrt(np.sum(np.diff(points, axis=0)**2, axis=1)))
-    n_pixel_samples = int(distance[-1])
+    n_pixel_samples = int(3*distance[-1])
     distance = np.insert(distance, 0, 0)/distance[-1]
 
     # interpolate
     alpha = np.linspace(0, 1, n_pixel_samples)
 
-    interpolator =  interp1d(distance, points, kind="quadratic", axis=0)
+    interpolator =  interp1d(distance, points, kind=len(path_list)-1, axis=0)
     interpolated_points = interpolator(alpha)
 
     # convert to pixel values (rounding and remove duplicates)
-    rounded_points = np.round(interpolated_points).astype(np.int64)
+    rounded_points = np.round(interpolated_points).astype(np.int64) # (N,2)
+    rounded_points = np.unique(rounded_points, axis=0)
 
     return rounded_points
 

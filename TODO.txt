@@ -1,5 +1,3 @@
 - think how propagating forward will be done if number of points changes from frame skip
     - can we linearly extrapolate the masks ?
-- fix fill for splines
-- disable double render when back to back spline points
 - add BETA functionality for kalman filter
