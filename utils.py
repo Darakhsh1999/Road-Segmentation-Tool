@@ -69,16 +69,6 @@ def spline_curve(path_list: list[Point]):
 
     return rounded_points
 
-def spline_mask(a,b,c,p1,p3):
-    x1, y1 = p1.pos
-    x3, y3 = p3.pos
-
-    x = np.arange(x1,x3+1)
-    y = np.round((a*x**2 + b*x + c)).astype(np.uint16)
-
-    return x,y
-
-
 
 if __name__ == "__main__":
 

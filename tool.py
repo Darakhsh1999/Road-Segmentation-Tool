@@ -12,6 +12,7 @@ class SegTool():
         self.config: Config = config
         self.source = cv2.VideoCapture(source_path)
         _, self.frame = self.source.read() # (H,W,C), np-uint8
+        self.frame_shape = self.frame.shape[:2] # (H,W)
         self.frame0 = self.frame.copy()
         self.update_mode("Visual")
         self.stop = False # Stop program
@@ -28,7 +29,7 @@ class SegTool():
         # Window 
         cv2.namedWindow("root", self.config.window_mode) 
         cv2.setMouseCallback("root", self.mouse_callback)
-
+        
         while (True):
             
             # Render image
@@ -197,7 +198,11 @@ class SegTool():
                     )
                 elif point.type == "spline":
 
-                    spline_pixels = utils.spline_curve(self.path[point_idx-1:point_idx+2])
+                    spline_pixels = utils.spline_curve(self.path[point_idx-1:point_idx+2]) # (x,y)
+
+                    spline_pixels = np.maximum(spline_pixels, 0)
+                    spline_pixels[:,0] = np.minimum(spline_pixels[:,0], self.frame_shape[1]-1)
+                    spline_pixels[:,1] = np.minimum(spline_pixels[:,1], self.frame_shape[0]-1)
 
                     self.frame[spline_pixels[:,1],spline_pixels[:,0],:] = self.config.color
 
