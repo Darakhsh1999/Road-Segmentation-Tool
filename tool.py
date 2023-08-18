@@ -17,7 +17,7 @@ class SegTool():
         self.stop = False # Stop program
         self.moving_circle = False # Drag and drop points
         self.path: list[Point] = []
-        self.highlight: int | None = None # Highlight point
+        self.highlight: bool = False # Highlight last point
 
         self.start_window() # init window
 
@@ -59,7 +59,7 @@ class SegTool():
             self.render("Car")
         elif result == ord("r"): 
             self.path = []
-            self.highlight = None
+            self.highlight = False
             self.render(self.mode)
         elif result == ord("q"):
             self.source.release()
@@ -109,6 +109,7 @@ class SegTool():
 
             if (e == cv2.EVENT_LBUTTONUP): # MB1 up
                 self.moving_circle = False
+                self.render(self.mode)
 
         elif self.mode == "Insert":
 
@@ -120,15 +121,13 @@ class SegTool():
                     self.render(self.mode)
                     print(f"Connected a path")
                     return
-
+                
                 # New point
                 cv2.circle(self.frame, (x,y), **self.config.circle_kwargs)
-                if self.highlight is None:
-                    self.highlight = 0
-                else:
-                    self.highlight += 1
+                if not self.highlight: self.highlight = True
 
                 if self.path:
+                    if self.path[-1].type == "end": self.path[-1].type = "linear"
                     cv2.line(self.frame, self.path[-1].pos, (x,y), **self.config.line_kwargs)
                 print(f"New circle at x: {x}, y: {y}")
                 self.path.append(Point(x,y))
@@ -165,9 +164,10 @@ class SegTool():
             # Draw point
             cv2.circle(self.frame, point.pos, **self.config.circle_kwargs) 
 
+            # Draw line
             if point_idx != 0:
-                if point.type == "linear":
-                    # Draw linear line
+                if point.type in ["linear","end"]:
+                    # Linear line
                     cv2.line(
                         self.frame,
                         self.path[point_idx-1].pos,
@@ -175,13 +175,12 @@ class SegTool():
                         **self.config.line_kwargs
                     )
                 elif point.type == "spline":
-                    # TODO Draw polynomial line
+                    # TODO Spline line
                     pass
 
-        
         # Render highlight point
-        if self.highlight is not None:
-            cv2.circle(self.frame, self.path[self.highlight].pos, **self.config.highlight_kwargs)
+        if self.highlight:
+            cv2.circle(self.frame, self.path[-1].pos, **self.config.highlight_kwargs)
 
         # Render fill
         if self.path and (self.path[-1].type == "end"):
@@ -193,11 +192,13 @@ class SegTool():
                 self.path[0].pos,
                 **self.config.line_kwargs
             )
+
             # Fill in the polygon
-            pts = np.array([point.pos for point in self.path])
-            poly_frame = self.frame.copy()
-            cv2.fillPoly(poly_frame, pts=[pts], color=config.color)
-            self.frame = cv2.addWeighted(self.frame, config.alpha, poly_frame, 1-config.alpha, 0)
+            if not self.moving_circle:
+                pts = np.array([point.pos for point in self.path])
+                poly_frame = self.frame.copy()
+                cv2.fillPoly(poly_frame, pts=[pts], color=config.color)
+                self.frame = cv2.addWeighted(self.frame, config.alpha, poly_frame, 1-config.alpha, 0)
 
 
     def update_mode(self, mode):
@@ -213,17 +214,19 @@ class SegTool():
 
     def delete_point(self, idx):
 
-        if self.highlight == 0:
-            self.highlight = None
-        else:
-            self.highlight -= 1
+        # Delete point
         if (idx == len(self.path)-1) and len(self.path) > 2: # deleting last point
             if self.path[idx].type == "end":
                 self.path[idx-1].type = "end"
             del self.path[idx]
         else:
             del self.path[idx]
-        return
+
+        # Update highlight
+        if len(self.path) == 0: self.highlight = False
+
+
+
 
 
 if __name__ == "__main__":

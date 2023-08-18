@@ -1,4 +1,4 @@
 - think how propagating forward will be done if number of points changes from frame skip
 - splines support
-- change highlight
+- make so fill is on called when moving_circle = False
 - add inbetween circle feature
