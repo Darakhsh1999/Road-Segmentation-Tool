@@ -68,7 +68,6 @@ class SegTool():
         else: # no defined input given
             return
 
-
     def mouse_callback(self, e, x, y, flags, params):
         """ Mouse action """
         
@@ -90,6 +89,8 @@ class SegTool():
                     self.moving_circle_idx = min_idx
                     return
                 elif (e == cv2.EVENT_RBUTTONDOWN): # MB2 down (change type)
+
+                    if (min_idx == 0) or (min_idx == len(self.path)-1): return # Can't change edge points
                     old_point = self.path[min_idx]
                     new_type = "spline" if old_point.type == "linear" else "linear"
                     px, py = old_point.pos
@@ -113,7 +114,7 @@ class SegTool():
 
         elif self.mode == "Insert":
 
-            if (e == cv2.EVENT_LBUTTONDOWN): # MB1 down
+            if (e == cv2.EVENT_LBUTTONDOWN): # MB1 down (add point/ close path)
 
                 # Close path 
                 if self.check_closed_path(x, y):
@@ -126,13 +127,30 @@ class SegTool():
                 cv2.circle(self.frame, (x,y), **self.config.circle_kwargs)
                 if not self.highlight: self.highlight = True
 
+                # Close path line
                 if self.path:
                     if self.path[-1].type == "end": self.path[-1].type = "linear"
                     cv2.line(self.frame, self.path[-1].pos, (x,y), **self.config.line_kwargs)
+
                 print(f"New circle at x: {x}, y: {y}")
                 self.path.append(Point(x,y))
                 self.render(self.mode)
                 return
+            
+            elif (e == cv2.EVENT_RBUTTONDOWN): # MB2 down (add point between)
+
+                # Consider all points except last point
+                min_dist, min_idx = utils.min_distance(self.path[:-1], x, y)
+
+                if min_dist < self.config.min_px_dist: 
+
+                    # find mid point between idx and idx +1
+                    x_mid, y_mid = utils.mid_point(self.path[min_idx], self.path[min_idx+1])
+                    middle_point = Point(x_mid, y_mid)
+                    print(f"New circle between index {min_idx} and index {min_idx+1} at x: {x}, y: {y}")
+                    self.path.insert(min_idx+1, middle_point)
+                    self.render(self.mode)
+                
 
         elif self.mode == "Car":
             pass
@@ -167,6 +185,9 @@ class SegTool():
             # Draw line
             if point_idx != 0:
                 if point.type in ["linear","end"]:
+                    
+                    if self.path[point_idx-1].type == "spline": continue
+
                     # Linear line
                     cv2.line(
                         self.frame,
@@ -175,8 +196,11 @@ class SegTool():
                         **self.config.line_kwargs
                     )
                 elif point.type == "spline":
-                    # TODO Spline line
-                    pass
+
+                    spline_pixels = utils.spline_curve(self.path[point_idx-1:point_idx+2])
+
+                    self.frame[spline_pixels[:,1],spline_pixels[:,0],:] = self.config.color
+
 
         # Render highlight point
         if self.highlight:

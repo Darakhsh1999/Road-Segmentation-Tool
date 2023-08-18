@@ -13,3 +13,18 @@ INSERT
 
 CAR (not implemented yet)
 - add car boxes
+
+
+Error check list
+
+1. Insert point and instantly remove it
+
+2. Connect a polygon
+
+3. Insert another line to disrupt polygon
+
+4. Connect polygon again
+
+5. move point in polygon
+
+6. insert point in between

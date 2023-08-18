@@ -1,4 +1,4 @@
 - think how propagating forward will be done if number of points changes from frame skip
-- splines support
-- make so fill is on called when moving_circle = False
-- add inbetween circle feature
+    - can we linearly extrapolate the masks ?
+- fix fill for splines
+- add BETA functionality for kalman filter

@@ -1,14 +1,14 @@
+import cv2
+import utils
 import numpy as np
 import matplotlib.pyplot as plt
 from point import Point
-import cv2
-import utils
 
 N = 600
 canvas = np.zeros((N,N), dtype= np.uint8)
 
 points = np.array([[150,300],[300,450],[450,300]]) # linear piecewise
-cv2.polylines(canvas, [points], color= (255,255,255), isClosed= False)
+cv2.polylines(canvas, [points], color=(255,255,255), isClosed= False)
 
 # 2nd degree polynomial
 p1 = Point(150,300)

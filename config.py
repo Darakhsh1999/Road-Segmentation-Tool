@@ -3,6 +3,7 @@ import cv2
 
 class Config():
 
+    use_kalman = False
     window_mode = cv2.WINDOW_NORMAL
     min_px_dist = 5 # Points in this range are connected
     frame_skipe = 10 # number of frame skips between each "f" call
