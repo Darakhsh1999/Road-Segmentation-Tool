@@ -1,6 +1,6 @@
 import numpy as np
 import cv2
-import pynput
+
 # BLUE IMAGE
 img = np.zeros( (600,600,3), dtype= np.uint8)
 img[:,:,0] = 255 # BGR

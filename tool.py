@@ -11,32 +11,32 @@ class SegTool():
         
         self.config: Config = config
         self.source = cv2.VideoCapture(source_path)
-        _, self.frame = self.source.read()
-        print("frame dtype is", self.frame.dtype)
+        _, self.frame = self.source.read() # (H,W,C), np-uint8
         self.frame0 = self.frame.copy()
         self.update_mode("Visual")
-        self.stop = False 
-        self.moving_circle = False
-        self.path = []
-        self.highlight = None
+        self.stop = False # Stop program
+        self.moving_circle = False # Drag and drop points
+        self.path: list[Point] = []
+        self.highlight: int | None = None # Highlight point
 
-        self.start() # init window
+        self.start_window() # init window
 
-    def start(self):
-        """ Initializes window """
+
+    def start_window(self):
+        """ Initializes window and run the main event loop """
         
         # Window 
         cv2.namedWindow("root", self.config.window_mode) 
         cv2.setMouseCallback("root", self.mouse_callback)
 
-        while True:
+        while (True):
             
             # Render image
             cv2.imshow("root", self.frame)
 
             # Event listener
             result = cv2.waitKey(1)
-            if result is None: continue
+            if result == -1: continue
 
             # Parse key
             self.parse_key(result)
@@ -45,6 +45,7 @@ class SegTool():
             if self.stop: break
 
     def parse_key(self, result):
+        """ Key press listener """
         
         if result == ord("f"):
             self.forward()
@@ -73,63 +74,59 @@ class SegTool():
         
         if self.mode == "Visual":
             min_dist, min_idx = utils.min_distance(self.path, x, y)
-            if e == cv2.EVENT_LBUTTONDOWN: # MB1 down
+            if (e == cv2.EVENT_LBUTTONDOWN): # MB1 down
                 if min_dist < self.config.min_px_dist: 
-                    print(f"Point {min_idx} is type {self.path[min_idx].type} as position: {self.path[min_idx].pos}")
+                    print(f"Point {min_idx} is type {self.path[min_idx].type} at position: {self.path[min_idx].pos}")
                 return
 
-        elif  self.mode == "Edit":
+        elif self.mode == "Edit":
             
             # Closest clicked point
             min_dist, min_idx = utils.min_distance(self.path, x, y)
 
-            if e == cv2.EVENT_LBUTTONDOWN: # MB1 down
-
-                if min_dist < self.config.min_px_dist: 
+            if min_dist < self.config.min_px_dist: 
+                if (e == cv2.EVENT_LBUTTONDOWN): # MB1 down (move)
                     self.moving_circle = True
                     self.moving_circle_idx = min_idx
-                return
-            elif e == cv2.EVENT_RBUTTONDOWN: # MB2 down
-
-                if min_dist < self.config.min_px_dist: 
+                    return
+                elif (e == cv2.EVENT_RBUTTONDOWN): # MB2 down (change type)
                     old_point = self.path[min_idx]
                     new_type = "spline" if old_point.type == "linear" else "linear"
                     px, py = old_point.pos
-                    self.path[min_idx] = Point(px, py, type= new_type)
+                    self.path[min_idx] = Point(px, py, type=new_type)
                     self.render(self.mode)
                     print(f"changed point type from {old_point.type} to {new_type} ")
-                return
-            elif e == cv2.EVENT_MBUTTONDOWN: # scroll down
-                if min_dist < self.config.min_px_dist: 
+                    return
+                elif (e == cv2.EVENT_MBUTTONDOWN): # scroll down (delete)
                     self.delete_point(min_idx)
                     self.render(self.mode)
                     print(f"deleted point number {min_idx}")
-                return
+                    return
 
             if self.moving_circle:
                 self.path[self.moving_circle_idx].pos = (x,y)
                 self.render(self.mode)
 
-            if  e == cv2.EVENT_LBUTTONUP: # MB1 up
+            if (e == cv2.EVENT_LBUTTONUP): # MB1 up
                 self.moving_circle = False
 
         elif self.mode == "Insert":
 
-            if e == cv2.EVENT_LBUTTONDOWN: # MB1 down
+            if (e == cv2.EVENT_LBUTTONDOWN): # MB1 down
 
                 # Close path 
                 if self.check_closed_path(x, y):
                     self.path[-1].type = "end"
                     self.render(self.mode)
-                    print(f"Connected a connected path")
+                    print(f"Connected a path")
                     return
 
                 # New point
                 cv2.circle(self.frame, (x,y), **self.config.circle_kwargs)
-                if self.highlight is not None:
-                    self.highlight += 1
-                else:
+                if self.highlight is None:
                     self.highlight = 0
+                else:
+                    self.highlight += 1
 
                 if self.path:
                     cv2.line(self.frame, self.path[-1].pos, (x,y), **self.config.line_kwargs)
@@ -137,6 +134,7 @@ class SegTool():
                 self.path.append(Point(x,y))
                 self.render(self.mode)
                 return
+
         elif self.mode == "Car":
             pass
         else:
@@ -158,46 +156,48 @@ class SegTool():
         # Render from raw frame
         self.frame = self.frame0.copy()
 
-        # Render mode
-        self.update_mode(mode= mode)
+        # Render mode text
+        self.update_mode(mode=mode)
         
         # Render path points and connections
         for point_idx, point in enumerate(self.path):
-            cv2.circle(self.frame, point.pos, **self.config.circle_kwargs)
+
+            # Draw point
+            cv2.circle(self.frame, point.pos, **self.config.circle_kwargs) 
 
             if point_idx != 0:
+                if point.type == "linear":
+                    # Draw linear line
+                    cv2.line(
+                        self.frame,
+                        self.path[point_idx-1].pos,
+                        self.path[point_idx].pos,
+                        **self.config.line_kwargs
+                    )
+                elif point.type == "spline":
+                    # TODO Draw polynomial line
+                    pass
 
-                # Draw linear line
-                cv2.line(
-                    self.frame,
-                    self.path[point_idx-1].pos,
-                    self.path[point_idx].pos,
-                    **self.config.line_kwargs
-                )
-
-                # TODO Draw polynomial line
         
-        # Render highlight
+        # Render highlight point
         if self.highlight is not None:
             cv2.circle(self.frame, self.path[self.highlight].pos, **self.config.highlight_kwargs)
 
         # Render fill
-        if self.path:
+        if self.path and (self.path[-1].type == "end"):
 
-            if self.path[-1].type == "end":
-                # Connect end to start with line
-                cv2.line(
-                    self.frame,
-                    self.path[-1].pos,
-                    self.path[0].pos,
-                    **self.config.line_kwargs
-                )
-                # Fill in the polygon
-                pts = np.array([point.pos for point in self.path])
-                poly_frame = self.frame.copy()
-                cv2.fillPoly(poly_frame, pts= [pts], color= config.color)
-                self.frame = cv2.addWeighted(self.frame, config.alpha, poly_frame, 1-config.alpha, 0)
-
+            # Connect end to start with line
+            cv2.line(
+                self.frame,
+                self.path[-1].pos,
+                self.path[0].pos,
+                **self.config.line_kwargs
+            )
+            # Fill in the polygon
+            pts = np.array([point.pos for point in self.path])
+            poly_frame = self.frame.copy()
+            cv2.fillPoly(poly_frame, pts=[pts], color=config.color)
+            self.frame = cv2.addWeighted(self.frame, config.alpha, poly_frame, 1-config.alpha, 0)
 
 
     def update_mode(self, mode):
@@ -206,15 +206,18 @@ class SegTool():
         cv2.putText(self.frame, f"Mode: {self.mode}", **self.config.text_kwargs)
 
     def check_closed_path(self, x, y):
-        if len(self.path) > 2 and utils.distance(self.path[0].pos, x, y) < self.config.min_px_dist: 
+        if (len(self.path) > 2) and (utils.distance(self.path[0].pos, x, y) < self.config.min_px_dist): 
                 return True
         else:
             return False
 
     def delete_point(self, idx):
 
-        self.highlight -= 1
-        if idx == (len(self.path)-1) and len(self.path) > 2:
+        if self.highlight == 0:
+            self.highlight = None
+        else:
+            self.highlight -= 1
+        if (idx == len(self.path)-1) and len(self.path) > 2: # deleting last point
             if self.path[idx].type == "end":
                 self.path[idx-1].type = "end"
             del self.path[idx]

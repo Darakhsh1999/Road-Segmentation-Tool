@@ -2,7 +2,7 @@ import math
 import numpy as np
 
 def min_distance(path, x, y):
-    """ Returns index and length to closest point """
+    """ Returns length and index to closest point """
 
     min_dist = math.inf
 
@@ -18,9 +18,9 @@ def min_distance(path, x, y):
     else:
         return min_dist, None
 
-def distance(point, x, y):
+def distance(point_pos, x, y):
     """ Returns distance between point and click """
-    return math.sqrt((x-point[0])**2 + (y-point[1])**2)
+    return math.sqrt((x-point_pos[0])**2 + (y-point_pos[1])**2)
 
 
 def poly_coefficients(p1, p2, p3):

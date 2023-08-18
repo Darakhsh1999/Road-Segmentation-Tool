@@ -19,7 +19,6 @@ class Config():
         "color": (255,255,255),
         "thickness": 2
     }
-
     circle_kwargs = {
         "radius": r,
         "color": color,

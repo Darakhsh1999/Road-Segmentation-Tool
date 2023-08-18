@@ -1,13 +1,15 @@
 
-INSERT
-- add circles
+
+VISUAL
+    - print point idx, type and position
 
 EDIT
 - move circles
 - change circle mode (double click)
 
-CAR
-- add car boxes
+INSERT
+- add circles from highlight
+- add circle between two points
 
-VISUAL
-- nothing
+CAR (not implemented yet)
+- add car boxes
