@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 from point import Point
 from config import Config
+from interpolation import interpolate_list
 
 
 class SegTool():
@@ -12,10 +13,13 @@ class SegTool():
         self.config: Config = config
         self.source = cv2.VideoCapture(source_path)
         _, self.frame = self.source.read() # (H,W,C), np-uint8
+        self.video_source = cv2.VideoWriter(f"{self.config.video_name}.mp4", cv2.VideoWriter_fourcc(*"DIVX"), 30, self.frame.shape)
         self.frame_shape = self.frame.shape[:2] # (H,W)
         self.frame0 = self.frame.copy()
         self.update_mode("Visual")
         self.stop = False # Stop program
+        self.contour_image = None
+        self.last_contour_image = None
         self.moving_circle = False # Drag and drop points
         self.path: list[Point] = []
         self.highlight: bool = False # Highlight last point
@@ -40,8 +44,6 @@ class SegTool():
             if result == -1: continue
 
             # Parse key
-            self.parse_key(result)
-
             # Check break condition
             if self.stop: break
 
@@ -164,8 +166,28 @@ class SegTool():
 
     def forward(self):
         """ Propagate forward in the source feed """
-        for _ in range(self.config.frame_skipe):
-            _, frame = self.source.read()
+
+        self.buffer_frame = []
+        for _ in range(self.config.frame_skips):
+            success, frame = self.source.read()
+            if not success: 
+                self.source.release()
+                cv2.destroyAllWindows()
+                self.stop = True
+                return
+            
+            self.buffer_frame.append(frame)
+        
+        # Interpolate        
+        if self.last_contour_image is not None:
+
+            interpolated_list = interpolate_list(self.last_contour_image, self.contour_image, n=self.config.frame_skips)
+
+            # write
+
+
+
+        self.last_contour = self.contour_image.copy()
         self.frame: np.ndarray = frame
         self.frame0 = frame.copy() # raw frame
         self.render(self.mode)
@@ -233,6 +255,8 @@ class SegTool():
                 contour_image = self.frame0.copy()
                 for cont in contours:
                     cv2.drawContours(contour_image, [cont], contourIdx=-1, color=self.config.color, thickness=cv2.FILLED)
+                
+                self.contour_image = contour_image
                 
                 self.frame = cv2.addWeighted(self.frame, config.alpha, contour_image, 1-config.alpha, 0)
 

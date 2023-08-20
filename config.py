@@ -6,7 +6,7 @@ class Config():
     use_kalman = False
     window_mode = cv2.WINDOW_NORMAL
     min_px_dist = 5 # Points in this range are connected
-    frame_skipe = 10 # number of frame skips between each "f" call
+    frame_skips = 5 # number of frame skips between each "f" call
     color = (0,255,0) # color for points and fill, BGR format
     alpha = 0.4 
     t = 1 # thickness [px]

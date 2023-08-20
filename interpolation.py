@@ -249,7 +249,28 @@ def interpolate_v4(image1, image2, n=1):
 
     return VQ
 
-def interpolate_v5(image1,image2):
+
+def interpolate_list(image1, image2, n):
+
+    im_list = [image1, image2]
+    count = 0
+
+    while (True):
+
+        temp_im_list = im_list.copy()
+        for idx in range(len(im_list)-1):
+            im1, im2 = im_list[idx], im_list[idx+1]
+            im_interpolated = interpolate_mask(im1, im2)
+            temp_im_list.insert(idx+count+1, im_interpolated)
+            count += 1
+            if count == n: break
+        im_list = temp_im_list.copy()
+        
+        if count == n: break
+    
+    return im_list
+
+def interpolate_mask(image1, image2):
 
     # Center of mass
     COM1 = np.array(center_of_mass(image1))
@@ -257,12 +278,6 @@ def interpolate_v5(image1,image2):
     COM12 = COM2-COM1 # vector pointing from COM1 to COM2
 
     norm8 = 2**8-1
-
-    mid_point = (COM1+COM2)/2
-    mid_point2 = COM1+0.5*(COM2-COM1) #convert t into vector 
-
-    print(np.unique(image1))
-
 
     # Shifted images
     image1_shifted = shift(image1, np.round(0.5*COM12))
@@ -333,9 +348,9 @@ def interpolate_v5(image1,image2):
 
 # Run method 5
 n=1
-inter_im3 = interpolate_v5(im1, im2)
-inter_im13 = interpolate_v5(im1, inter_im3)
-inter_im32 = interpolate_v5(inter_im3, im2)
+inter_im3 = interpolate_mask(im1, im2)
+inter_im13 = interpolate_mask(im1, inter_im3)
+inter_im32 = interpolate_mask(inter_im3, im2)
 fig, ax = plt.subplots(ncols=5)
 ax[0].imshow(im1, cmap="gray")
 ax[1].imshow(inter_im13, cmap="gray")

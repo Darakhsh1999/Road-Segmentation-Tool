@@ -1,6 +1,1 @@
-- think how propagating forward will be done if number of points changes from frame skip
-    - can we linearly extrapolate the masks ?
 - add BETA functionality for kalman filter
-
-
-- Matlab function that should achive what I want https://se.mathworks.com/matlabcentral/fileexchange/61313-morph-binary-images
