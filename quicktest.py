@@ -50,5 +50,29 @@ from scipy.interpolate import UnivariateSpline
 #plt.show()
 
 
-A = np.array([[1,1],[1,1],[2,1],[1,2],[2,5]])
-print(np.unique(A, axis=0))
+#from scipy.ndimage import distance_transform_edt
+#bw = np.zeros((5,5))
+#bw[1,1] = 1
+#bw[3,3] = 1
+#print(bw)
+#bw_dist = distance_transform_edt(1-bw)
+#print(bw_dist)
+
+pts = np.array([[2.1, 6.2, 8.3],
+                [3.3, 5.2, 7.1]])
+print(pts.shape)
+
+
+from scipy.interpolate import RegularGridInterpolator
+from numpy import linspace, zeros, array
+x = linspace(1,4,11)
+y = linspace(4,7,22)
+z = linspace(7,9,33)
+V = zeros((11,22,33))
+for i in range(11):
+    for j in range(22):
+        for k in range(33):
+            V[i,j,k] = 100*x[i] + 10*y[j] + z[k]
+fn = RegularGridInterpolator((x,y,z), V)
+pts = array([[2,6,8],[3,5,7]])
+print(fn(pts))
