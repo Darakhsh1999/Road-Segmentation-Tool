@@ -20,6 +20,7 @@ class SegTool():
         self.video_source = cv2.VideoWriter(f"{self.config.video_name}.avi", encoder, self.config.FPS, tuple(self.frame.shape)[:2])
         self.frame_shape = self.frame.shape[:2] # (H,W)
         self.frame0 = self.frame.copy()
+        self.black_frame = np.zeros(self.frame.shape[:2], dtype=np.uint8)
         self.update_mode("Visual")
         self.stop = False # Stop program
         self.contour_image = None
@@ -178,14 +179,14 @@ class SegTool():
                 self.stop = True
                 return
             
-        ## Interpolate        
-        #if self.last_contour_image is not None:
+        # Interpolate        
+        if self.last_contour_image is not None:
 
-            #interpolated_list = interpolate_list(self.last_contour_image, self.contour_image, n=self.config.frame_skips)
+            interpolated_list = interpolate_list(self.last_contour_image, self.contour_image, n=self.config.frame_skips)
 
-            ## write
-            #for write_frame in interpolated_list:
-                #self.video_source.write(write_frame)
+            # write
+            for write_frame in interpolated_list:
+                self.video_source.write(write_frame)
 
 
         if self.contour_image is not None:
