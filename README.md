@@ -8,6 +8,10 @@ User creates closed polygons using linear, quadratic and cubic splines to segmen
 
 **Example**
 
-![im1](https://i.imgur.com/GyGIfn8.png)
+![im1](https://imgur.com/a/evF07a3)
+
+![im2](https://imgur.com/a/1T34WYC)
+
+![im3](https://imgur.com/a/HrNa9kA)
 
 
