@@ -12,6 +12,9 @@ class SegTool():
         
         self.config: Config = config
         self.source = cv2.VideoCapture(source_path)
+        print(f"(H,W) = {self.source.get(4)},{self.source.get(3)}")
+        print(f"FPS = {self.source.get(5)}")
+        print(f"Frame count = {self.source.get(7)}")
         _, self.frame = self.source.read() # (H,W,C), np-uint8
         self.video_source = cv2.VideoWriter(f"{self.config.video_name}.mp4", cv2.VideoWriter_fourcc(*"DIVX"), 30, self.frame.shape)
         self.frame_shape = self.frame.shape[:2] # (H,W)
@@ -58,8 +61,6 @@ class SegTool():
             self.render("Edit")
         elif result == ord("i"):
             self.render("Insert")
-        elif result == ord("c"):
-            self.render("Car")
         elif result == ord("r"): 
             self.path = []
             self.highlight = False
@@ -156,10 +157,7 @@ class SegTool():
                     print(f"New circle between index {min_idx} and index {min_idx+1} at x: {x}, y: {y}")
                     self.path.insert(min_idx+1, middle_point)
                     self.render(self.mode)
-                
 
-        elif self.mode == "Car":
-            pass
         else:
             raise RuntimeError(f"Unexpected runtime mode {self.mode}")
 
