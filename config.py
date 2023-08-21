@@ -4,6 +4,8 @@ import cv2
 class Config():
 
     use_kalman = False
+    video_name = "labeled_video"
+    FPS = 30
     window_mode = cv2.WINDOW_NORMAL
     min_px_dist = 5 # Points in this range are connected
     frame_skips = 5 # number of frame skips between each "f" call

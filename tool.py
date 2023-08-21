@@ -14,9 +14,10 @@ class SegTool():
         self.source = cv2.VideoCapture(source_path)
         print(f"(H,W) = {self.source.get(4)},{self.source.get(3)}")
         print(f"FPS = {self.source.get(5)}")
-        print(f"Frame count = {self.source.get(7)}")
+        print(f"Frame count = {self.source.get(7)} frames")
         _, self.frame = self.source.read() # (H,W,C), np-uint8
-        self.video_source = cv2.VideoWriter(f"{self.config.video_name}.mp4", cv2.VideoWriter_fourcc(*"DIVX"), 30, self.frame.shape)
+        encoder = cv2.VideoWriter_fourcc("M","J","P","G")
+        self.video_source = cv2.VideoWriter(f"{self.config.video_name}.avi", encoder, self.config.FPS, tuple(self.frame.shape)[:2])
         self.frame_shape = self.frame.shape[:2] # (H,W)
         self.frame0 = self.frame.copy()
         self.update_mode("Visual")
@@ -47,6 +48,8 @@ class SegTool():
             if result == -1: continue
 
             # Parse key
+            self.parse_key(result)
+
             # Check break condition
             if self.stop: break
 
@@ -63,10 +66,12 @@ class SegTool():
             self.render("Insert")
         elif result == ord("r"): 
             self.path = []
+            self.contour_image = None
             self.highlight = False
             self.render(self.mode)
         elif result == ord("q"):
             self.source.release()
+            self.video_source.release()
             cv2.destroyAllWindows()
             self.stop = True
         else: # no defined input given
@@ -165,7 +170,6 @@ class SegTool():
     def forward(self):
         """ Propagate forward in the source feed """
 
-        self.buffer_frame = []
         for _ in range(self.config.frame_skips):
             success, frame = self.source.read()
             if not success: 
@@ -174,18 +178,18 @@ class SegTool():
                 self.stop = True
                 return
             
-            self.buffer_frame.append(frame)
-        
-        # Interpolate        
-        if self.last_contour_image is not None:
+        ## Interpolate        
+        #if self.last_contour_image is not None:
 
-            interpolated_list = interpolate_list(self.last_contour_image, self.contour_image, n=self.config.frame_skips)
+            #interpolated_list = interpolate_list(self.last_contour_image, self.contour_image, n=self.config.frame_skips)
 
-            # write
+            ## write
+            #for write_frame in interpolated_list:
+                #self.video_source.write(write_frame)
 
 
-
-        self.last_contour = self.contour_image.copy()
+        if self.contour_image is not None:
+            self.last_contour_image = self.contour_image.copy()
         self.frame: np.ndarray = frame
         self.frame0 = frame.copy() # raw frame
         self.render(self.mode)
@@ -305,5 +309,5 @@ class SegTool():
 if __name__ == "__main__":
 
     config = Config()
-    source_path = r".\Videos\ScenicDrive.mp4"
+    source_path = r".\Videos\ScenicDrive_short.mp4"
     SegTool(source_path, config)

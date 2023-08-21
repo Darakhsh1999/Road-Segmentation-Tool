@@ -300,61 +300,59 @@ def interpolate_mask(image1, image2):
 
 
 
+if __name__ == "__main__":
+    ## TESTING INTERPOLATION METHODS
 
-### TESTING INTERPOLATION METHODS
+    # Run method 1
+    inter_im = interpolate_v1(im1,im2, 0.5)
 
-
-## Run method 1
-#inter_im = interpolate_v1(im1,im2, 0.5)
-
-#fig, ax = plt.subplots(ncols= 3)
-#ax[0].imshow(im1, cmap="gray")
-#ax[1].imshow(inter_im, cmap="gray")
-#ax[2].imshow(im2, cmap="gray")
-#plt.show()
-
-
-## Run method 2
-#inter_im = interpolate_v2([im1,im2], 0.5)
-##im_inter = (255*(im_inter - im_inter.min())/(im_inter.max()-im_inter.min())).astype(np.uint8)
-
-#fig, ax = plt.subplots(ncols=3)
-#ax[0].imshow(im1, cmap="gray")
-#ax[1].imshow(inter_im, cmap="gray")
-#ax[2].imshow(im2, cmap="gray")
-#plt.show()
+    fig, ax = plt.subplots(ncols= 3)
+    ax[0].imshow(im1, cmap="gray")
+    ax[1].imshow(inter_im, cmap="gray")
+    ax[2].imshow(im2, cmap="gray")
+    plt.show()
 
 
-### Run method 3
-#n = 4
-#N = n+2
-#inter_im = interpolate_v3(im1, im2,n=n)
+    # Run method 2
+    inter_im = interpolate_v2([im1,im2], 0.5)
 
-#fig, ax = plt.subplots(ncols=N)
-#for i in range(N):
-    #ax[i].imshow(inter_im[:,:,i], cmap="gray")
-#plt.show()
-
-### Run method 4
-#n = 4
-#N = n+2
-#inter_im = interpolate_v4(im1, im2,n=n)
-
-#fig, ax = plt.subplots(ncols=N)
-#for i in range(N):
-    #ax[i].imshow(inter_im[:,:,i], cmap="gray")
-#plt.show()
+    fig, ax = plt.subplots(ncols=3)
+    ax[0].imshow(im1, cmap="gray")
+    ax[1].imshow(inter_im, cmap="gray")
+    ax[2].imshow(im2, cmap="gray")
+    plt.show()
 
 
-# Run method 5
-n=1
-inter_im3 = interpolate_mask(im1, im2)
-inter_im13 = interpolate_mask(im1, inter_im3)
-inter_im32 = interpolate_mask(inter_im3, im2)
-fig, ax = plt.subplots(ncols=5)
-ax[0].imshow(im1, cmap="gray")
-ax[1].imshow(inter_im13, cmap="gray")
-ax[2].imshow(inter_im3, cmap="gray")
-ax[3].imshow(inter_im32, cmap="gray")
-ax[4].imshow(im2, cmap="gray")
-plt.show()
+    ## Run method 3
+    n = 4
+    N = n+2
+    inter_im = interpolate_v3(im1, im2,n=n)
+
+    fig, ax = plt.subplots(ncols=N)
+    for i in range(N):
+       ax[i].imshow(inter_im[:,:,i], cmap="gray")
+    plt.show()
+
+    ## Run method 4
+    n = 4
+    N = n+2
+    inter_im = interpolate_v4(im1, im2,n=n)
+
+    fig, ax = plt.subplots(ncols=N)
+    for i in range(N):
+       ax[i].imshow(inter_im[:,:,i], cmap="gray")
+    plt.show()
+
+
+    # Run method 5
+    n=1
+    inter_im3 = interpolate_mask(im1, im2)
+    inter_im13 = interpolate_mask(im1, inter_im3)
+    inter_im32 = interpolate_mask(inter_im3, im2)
+    fig, ax = plt.subplots(ncols=5)
+    ax[0].imshow(im1, cmap="gray")
+    ax[1].imshow(inter_im13, cmap="gray")
+    ax[2].imshow(inter_im3, cmap="gray")
+    ax[3].imshow(inter_im32, cmap="gray")
+    ax[4].imshow(im2, cmap="gray")
+    plt.show()

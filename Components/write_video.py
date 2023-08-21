@@ -11,8 +11,9 @@ video_source = cv2.VideoWriter(r"Videos\test_video.avi", cv2.VideoWriter_fourcc(
 for i in range(300): # frames
 
     if i % FPS == 0:
-        array = np.random.randint(0, 255, size=(*frame_shape,3), dtype=np.uint8)
-    video_source.write(array)
+        array = np.random.randint(0, 255, size=frame_shape, dtype=np.uint8)
+        video_frame = np.stack((array,array,array), axis=-1)
+    video_source.write(video_frame)
 
 
 video_source.release()
