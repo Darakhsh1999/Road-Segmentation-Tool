@@ -8,16 +8,6 @@ Create binary segmentation maps from closed polygons using linear, quadratic and
 
 **Example**
 
-<img src="https://imgur.com/a/evF07a3" alt="drawing" width="400"/>
-
-<img src="https://imgur.com/a/1T34WYC" alt="drawing" width="400"/>
-
-<img src="https://imgur.com/a/HrNa9kA" alt="drawing" width="400"/>
-
----
-
-**Example**
-
 ![image1](https://i.imgur.com/buGHTAG.png)
 
 ![image2](https://i.imgur.com/MSgpsXX.png)
