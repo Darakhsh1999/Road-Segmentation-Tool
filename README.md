@@ -6,7 +6,11 @@ Create binary segmentation maps from closed polygons using linear, quadratic and
 
 ---
 
-**Example**
+There are 3 modes; Insert, Edit and Visual similar to VIM workflow. The different modes toggle the mouse callback mappings. In insert mode, the user can add points either from the last point, highlighted by a black circle, or insert in the mid point between two existing points. In edit mode, the user can move, change spline type and delete points. Visual mode prints out coordinates and point type to the console. The config module specifies a container class with settings and parameters for the labeling. The road labeling is done for every N video frames and the binary map for the skipped frames are interpolated.
+
+---
+
+## **Example**
 
 ![image1](https://i.imgur.com/buGHTAG.png)
 
