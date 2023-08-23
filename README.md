@@ -12,7 +12,7 @@ There are 3 modes; Insert, Edit and Visual similar to VIM workflow. The differen
 
 ## **Example**
 
-![gif](https://i.imgur.com/74kXjp9.mp4)
+![gif](https://i.imgur.com/x886P4t.mp4)
 
 ![image1](https://i.imgur.com/buGHTAG.png)
 
