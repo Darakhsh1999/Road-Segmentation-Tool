@@ -5,4 +5,5 @@ from config import Config
 
 config = Config()
 source_path = r".\Videos\ScenicDrive.mp4"
-SegTool(source_path, config)
+tool = SegTool(source_path, config)
+tool.start_window()

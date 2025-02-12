@@ -29,9 +29,6 @@ class SegTool():
         self.path: list[Point] = []
         self.highlight: bool = False # Highlight last point
 
-        self.start_window() # init window
-
-
     def start_window(self):
         """ Initializes window and run the main event loop """
         
@@ -179,14 +176,14 @@ class SegTool():
                 self.stop = True
                 return
             
-        # Interpolate        
-        if self.last_contour_image is not None:
+        ## Interpolate        
+        #if self.last_contour_image is not None:
 
-            interpolated_list = interpolate_list(self.last_contour_image, self.contour_image, n=self.config.frame_skips)
+            #interpolated_list = interpolate_list(self.last_contour_image, self.contour_image, n=self.config.frame_skips)
 
-            # write
-            for write_frame in interpolated_list:
-                self.video_source.write(write_frame)
+            ## write
+            #for write_frame in interpolated_list:
+                #self.video_source.write(write_frame)
 
 
         if self.contour_image is not None:
@@ -311,4 +308,4 @@ if __name__ == "__main__":
 
     config = Config()
     source_path = r".\Videos\ScenicDrive_short.mp4"
-    SegTool(source_path, config)
+    SegTool(source_path, config).start_window()
