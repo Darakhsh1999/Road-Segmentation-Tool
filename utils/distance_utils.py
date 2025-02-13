@@ -1,4 +1,5 @@
 import math
+from point import Point
 
 def min_distance(path, x, y):
     """ Returns length and index to closest point """
