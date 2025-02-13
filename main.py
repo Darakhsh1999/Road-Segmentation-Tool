@@ -1,6 +1,5 @@
-import cv2
-from tool import SegTool
 from config import Config
+from tool import SegTool
 
 
 config = Config()
