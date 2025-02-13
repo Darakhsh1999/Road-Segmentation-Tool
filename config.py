@@ -3,7 +3,9 @@ import cv2
 
 class Config():
 
-    use_kalman = False
+    # Debug level
+    debug = 1 # 0 = None, 1 = prints
+
     video_name = "labeled_video"
     FPS = 30
     window_mode = cv2.WINDOW_NORMAL
