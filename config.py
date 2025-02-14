@@ -1,4 +1,5 @@
 """ Config class """
+import os
 import cv2 
 
 class Config():
@@ -16,7 +17,7 @@ class Config():
     t = 1 # thickness [px]
     r = 5 # radius [px]
 
-    # Kwargs
+    ### Kwargs
     text_kwargs = {
         "org": (30,30),
         "fontFace": cv2.FONT_HERSHEY_PLAIN,
@@ -36,5 +37,16 @@ class Config():
     }
     line_kwargs = {
         "color": color,
+        "thickness": 1
+    }
+    
+    # Binary kwargs
+    binary_circle_kwargs = {
+        "radius": 1,
+        "color": 255,
+        "thickness": -1
+    }
+    binary_line_kwargs = {
+        "color": 255,
         "thickness": 1
     }
