@@ -1,3 +1,4 @@
+import os
 import cv2
 import copy
 import numpy as np
@@ -21,14 +22,16 @@ class SegTool():
         # Video writer
         encoder = cv2.VideoWriter_fourcc("M","J","P","G")
         flipped_frame_shape = (self.frame_shape[1], self.frame_shape[0]) # (W,H)
-        self.video_source = cv2.VideoWriter(f"{self.config.video_name}.avi", encoder, self.config.FPS, flipped_frame_shape) # (W,H)
+        video_path = os.path.join("Videos","labeled", f"{self.config.video_name}{np.random.randint(0,10000)}.avi")
+        if self.config.debug > 0: print(f"Saved video to path {video_path}")
+        self.video_source = cv2.VideoWriter(video_path, encoder, self.config.FPS, flipped_frame_shape) # (W,H)
 
         # Application state variables
         self.frame0 = self.frame.copy() # raw frame from source
         self.stop = False # Stop program
         self.moving_circle = False # Drag and drop points
         self.path: list[Point] = []
-        self.last_path = None
+        self.last_path: list[Point] = []
         self.highlight: bool = False # Highlight last point
         self.show_annotation: bool = True # Toggle annotation
         
@@ -152,8 +155,7 @@ class SegTool():
                 if self.check_closed_path(x, y):
                     self.path[-1].type = "end"
                     self.render(self.mode)
-                    if self.config.debug > 0:
-                        print(f"Connected a path")
+                    if self.config.debug > 0: print(f"Connected a path")
                     return
                 
                 # New point
@@ -192,7 +194,7 @@ class SegTool():
         """ Propagate forward in the source feed """
 
         # Interpolate 
-        #self.interpolate(self.path,self.last_path)
+        self.interpolate()
         self.last_path = copy.deepcopy(self.path)
 
         # Propogate forward N frames
@@ -217,6 +219,7 @@ class SegTool():
         self.frame = self.frame0.copy()
 
         if self.show_annotation:
+
             # Render path points and connections
             for point_idx, point in enumerate(self.path):
 
@@ -282,34 +285,114 @@ class SegTool():
 
     def interpolate(self):
 
-        black_mask = np.zeros(self.frame_shape, dtype=np.uint8)
-        
-        if (self.path is None) or (self.last_path is None):
-            self.write_frame(black_mask.T, n=self.config.frame_skips)
-        elif (self.path == self.last_path):
+        if self.write_black_mask():
+            if self.config.debug > 0: print("Wrote black mask to video")
+            black_mask = np.zeros(self.frame_shape, dtype=np.uint8)
+            self.write_frame(black_mask, n=self.config.frame_skips)
+        elif self.are_deep_copies():
+            if self.config.debug > 0: print("Wrote previous mask to video")
             mask = self.path_to_mask(self.last_path)
-            self.write_frame(mask.T, n=self.config.frame_skips)
+            self.write_frame(mask, n=self.config.frame_skips)
         else:
-            pass # perform interpolation
-
+            if self.config.debug > 0: print("Performed interpolation")
+            frame_list = [first_frame]
             first_frame = self.path_to_mask(self.last_path)
-
-
-
-
             last_frame = self.path_to_mask(self.path)
 
             # create pair-wise mapping between both paths
-    
+            N = len(self.path)
+            M = len(self.last_path)
 
-    def path_to_mask(self, path):
-        pass
+            if N > M:
+                pass
+            elif M > N:
+                pass
+            else:
+                pass
+            
+            for _frame in frame_list:
+                self.write_frame(_frame)
     
-    def write_frame(self, binary_mask, n=1):
+    def are_deep_copies(self):
+        if len(self.path) != len(self.last_path):
+            return False
+        for point1, point2 in zip(self.path, self.last_path):
+            if (point1.pos != point2.pos) or (point1.type != point2.type):
+                return False
+        return True
 
-        mask = binary_mask.T
+    def write_black_mask(self) -> bool:
+        """ Returns True if we should write black mask to video """
+        if (len(self.path) == 0):
+            return True
+        elif (len(self.last_path) == 0):
+            return True
+        elif not (self.path[-1].type == "end" and self.last_path[-1].type == "end"):
+            return True
+        else:
+            return False
+
+    def path_to_mask(self, path: list[Point]): 
+
+        black_mask = np.zeros(self.frame_shape, dtype=np.uint8)
+        for point_idx, point in enumerate(path):
+
+            # Draw point
+            cv2.circle(black_mask, point.pos, **self.config.binary_circle_kwargs)
+
+            # Draw line
+            if point_idx != 0:
+                if point.type in ["linear","end"]:
+                    
+                    if path[point_idx-1].type == "spline": continue
+
+                    # Linear line
+                    cv2.line(
+                        black_mask,
+                        path[point_idx-1].pos,
+                        path[point_idx].pos,
+                        **self.config.binary_line_kwargs
+                    )
+                elif point.type == "spline":
+
+                    if path[point_idx-1].type == "spline": continue # only render first of consecutive spline points
+
+                    next_idx = point_idx+1 if (path[point_idx+1].type == "spline") else point_idx
+                    spline_pixels = curve_utils.spline_curve(path[point_idx-1:next_idx+2]) # (x,y)
+
+                    # Edge detection
+                    spline_pixels = np.maximum(spline_pixels, 0)
+                    spline_pixels[:,0] = np.minimum(spline_pixels[:,0], self.frame_shape[1]-1)
+                    spline_pixels[:,1] = np.minimum(spline_pixels[:,1], self.frame_shape[0]-1)
+
+                    black_mask[spline_pixels[:,1],spline_pixels[:,0],:] = 255
+
+        # Render fill
+        if path and (path[-1].type == "end"):
+
+            # Connect end to start with line
+            cv2.line(
+                black_mask,
+                path[-1].pos,
+                path[0].pos,
+                **self.config.binary_line_kwargs
+            )
+
+
+            #color_mask = cv2.inRange(black_mask, 255, 255) # 0/255 mask, np-uint8
+            contours, _ = cv2.findContours(black_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+            for cont in contours:
+                cv2.drawContours(black_mask, [cont], contourIdx=-1, color=255, thickness=cv2.FILLED)
+
+
+        return black_mask
+        
+    
+    def write_frame(self, mask, n=1):
+        """ Writes frame input (H,W) format to video encoder """
         stacked_mask = np.stack((mask,mask,mask), axis=-1) 
         for _ in range(n):
+            if self.config.debug > 0: print(f"writing frame shape {stacked_mask.shape}")
             self.video_source.write(stacked_mask)
         return
 
