@@ -1,2 +1,0 @@
-- T = toggle annotation
-- Z = reset to last path

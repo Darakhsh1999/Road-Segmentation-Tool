@@ -30,6 +30,7 @@ class SegTool():
         self.path: list[Point] = []
         self.last_path = None
         self.highlight: bool = False # Highlight last point
+        self.show_annotation: bool = True # Toggle annotation
         
         # Initialize correct mode
         self.update_mode("Visual")
@@ -70,6 +71,7 @@ class SegTool():
         """ Key press listener """
         
         if result == ord("f"):
+            self.show_annotation = True
             self.forward()
         elif result == ord("v"):
             self.render("Visual")
@@ -77,11 +79,14 @@ class SegTool():
             self.render("Edit")
         elif result == ord("i"):
             self.render("Insert")
+        elif result == ord("t"): # Toggle annotation
+            self.show_annotation = not self.show_annotation
+            self.render(self.mode)
         elif result == ord("r"): # Reset 
             self.path = []
             self.highlight = False
             self.render(self.mode)
-        elif result == ord("z"): # Reset 
+        elif result == ord("z"): # Undo 
             self.path = copy.deepcopy(self.last_path)
             self.highlight = True # incase, we pressed 'r' in this instance
             self.render(self.mode)
@@ -211,67 +216,68 @@ class SegTool():
         # Render from raw frame
         self.frame = self.frame0.copy()
 
+        if self.show_annotation:
+            # Render path points and connections
+            for point_idx, point in enumerate(self.path):
+
+                # Draw point
+                cv2.circle(self.frame, point.pos, **self.config.circle_kwargs) 
+
+                # Draw line
+                if point_idx != 0:
+                    if point.type in ["linear","end"]:
+                        
+                        if self.path[point_idx-1].type == "spline": continue
+
+                        # Linear line
+                        cv2.line(
+                            self.frame,
+                            self.path[point_idx-1].pos,
+                            self.path[point_idx].pos,
+                            **self.config.line_kwargs
+                        )
+                    elif point.type == "spline":
+
+                        if self.path[point_idx-1].type == "spline": continue # only render first of consecutive spline points
+
+                        next_idx = point_idx+1 if (self.path[point_idx+1].type == "spline") else point_idx
+                        spline_pixels = curve_utils.spline_curve(self.path[point_idx-1:next_idx+2]) # (x,y)
+
+                        # Edge detection
+                        spline_pixels = np.maximum(spline_pixels, 0)
+                        spline_pixels[:,0] = np.minimum(spline_pixels[:,0], self.frame_shape[1]-1)
+                        spline_pixels[:,1] = np.minimum(spline_pixels[:,1], self.frame_shape[0]-1)
+
+                        self.frame[spline_pixels[:,1],spline_pixels[:,0],:] = self.config.color
+
+            # Render fill
+            if self.path and (self.path[-1].type == "end"):
+
+                # Connect end to start with line
+                cv2.line(
+                    self.frame,
+                    self.path[-1].pos,
+                    self.path[0].pos,
+                    **self.config.line_kwargs
+                )
+
+                # Fill in the polygon
+                if not self.moving_circle:
+
+                    color_mask = cv2.inRange(self.frame, self.config.color, self.config.color) # 0/255 mask, np-uint8
+                    contours, _ = cv2.findContours(color_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+                    contour_image = self.frame0.copy()
+                    for cont in contours:
+                        cv2.drawContours(contour_image, [cont], contourIdx=-1, color=self.config.color, thickness=cv2.FILLED)
+                    self.frame = cv2.addWeighted(self.frame, config.alpha, contour_image, 1-config.alpha, 0)
+
+            # Render circle highlight point
+            if self.highlight:
+                cv2.circle(self.frame, self.path[-1].pos, **self.config.highlight_kwargs)
+
         # Render mode text
         self.update_mode(mode=mode)
         
-        # Render path points and connections
-        for point_idx, point in enumerate(self.path):
-
-            # Draw point
-            cv2.circle(self.frame, point.pos, **self.config.circle_kwargs) 
-
-            # Draw line
-            if point_idx != 0:
-                if point.type in ["linear","end"]:
-                    
-                    if self.path[point_idx-1].type == "spline": continue
-
-                    # Linear line
-                    cv2.line(
-                        self.frame,
-                        self.path[point_idx-1].pos,
-                        self.path[point_idx].pos,
-                        **self.config.line_kwargs
-                    )
-                elif point.type == "spline":
-
-                    if self.path[point_idx-1].type == "spline": continue # only render first of consecutive spline points
-
-                    next_idx = point_idx+1 if (self.path[point_idx+1].type == "spline") else point_idx
-                    spline_pixels = curve_utils.spline_curve(self.path[point_idx-1:next_idx+2]) # (x,y)
-
-                    # Edge detection
-                    spline_pixels = np.maximum(spline_pixels, 0)
-                    spline_pixels[:,0] = np.minimum(spline_pixels[:,0], self.frame_shape[1]-1)
-                    spline_pixels[:,1] = np.minimum(spline_pixels[:,1], self.frame_shape[0]-1)
-
-                    self.frame[spline_pixels[:,1],spline_pixels[:,0],:] = self.config.color
-
-        # Render fill
-        if self.path and (self.path[-1].type == "end"):
-            print(self.path[-1].type)
-
-            # Connect end to start with line
-            cv2.line(
-                self.frame,
-                self.path[-1].pos,
-                self.path[0].pos,
-                **self.config.line_kwargs
-            )
-
-            # Fill in the polygon
-            if not self.moving_circle:
-
-                color_mask = cv2.inRange(self.frame, self.config.color, self.config.color) # 0/255 mask, np-uint8
-                contours, _ = cv2.findContours(color_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
-                contour_image = self.frame0.copy()
-                for cont in contours:
-                    cv2.drawContours(contour_image, [cont], contourIdx=-1, color=self.config.color, thickness=cv2.FILLED)
-                self.frame = cv2.addWeighted(self.frame, config.alpha, contour_image, 1-config.alpha, 0)
-
-        # Render circle highlight point
-        if self.highlight:
-            cv2.circle(self.frame, self.path[-1].pos, **self.config.highlight_kwargs)
     
 
     def interpolate(self):
