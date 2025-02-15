@@ -20,10 +20,10 @@ class SegTool():
         self.frame_shape = self.frame.shape[:2] # (H,W)
 
         # Video writer
-        encoder = cv2.VideoWriter_fourcc("M","J","P","G")
-        flipped_frame_shape = (self.frame_shape[1], self.frame_shape[0]) # (W,H)
         video_path = os.path.join("Videos","labeled", f"{self.config.video_name}{np.random.randint(0,10000)}.avi")
         if self.config.debug > 0: print(f"Saved video to path {video_path}")
+        encoder = cv2.VideoWriter_fourcc("M","J","P","G")
+        flipped_frame_shape = (self.frame_shape[1], self.frame_shape[0]) # (W,H)
         self.video_source = cv2.VideoWriter(video_path, encoder, self.config.FPS, flipped_frame_shape) # (W,H)
 
         # Application state variables
@@ -295,20 +295,24 @@ class SegTool():
             self.write_frame(mask, n=self.config.frame_skips)
         else:
             if self.config.debug > 0: print("Performed interpolation")
-            frame_list = [first_frame]
-            first_frame = self.path_to_mask(self.last_path)
-            last_frame = self.path_to_mask(self.path)
 
             # create pair-wise mapping between both paths
-            N = len(self.path)
             M = len(self.last_path)
+            N = len(self.path)
 
-            if N > M:
-                pass
-            elif M > N:
-                pass
+            p1_xy, p2_xy = self.get_path_to_point_vectors()
+
+            if N == M: # Same number of points
+
+                D = self.distance_matrix()
+                point_mapping_dict = self.path_point_mapping(D)
+                delta = self.calculate_delta(point_mapping_dict)
+                path_list = [self.last_path] + self.interpolate_path(delta) + [self.path]
+                frame_list = [self.path_to_mask(x) for x in path_list]
+                
             else:
                 pass
+                raise NotImplementedError("Have not implemented for general case M != N")
             
             for _frame in frame_list:
                 self.write_frame(_frame)
@@ -331,6 +335,66 @@ class SegTool():
             return True
         else:
             return False
+    
+    def get_path_to_point_vectors(self):
+
+        p1_xy = np.array([list(x.pos) for x in self.last_path]) # (M,2)
+        p2_xy = np.array([list(x.pos) for x in self.path]) # (N,2)
+        if self.config.debug > 0: print(p1_xy.shape, p2_xy.shape)
+        return p1_xy, p2_xy
+    
+    def distance_matrix(self):
+        M = len(self.last_path)
+        N = len(self.path)
+        p1_xy = np.array([list(x.pos) for x in self.last_path]) # (M,2)
+        p2_xy = np.array([list(x.pos) for x in self.path]) # (N,2)
+
+        D = np.zeros((M,N))
+        for m, p1 in enumerate(p1_xy):
+            for n, p2 in enumerate(p2_xy):
+                D[m,n] = np.linalg.norm(p1-p2)
+
+        return D
+    
+    def path_point_mapping(self, D: np.ndarray):
+
+        M = D.shape[0]
+        mapping_dict = {}
+
+        for m in range(M):
+            min_row_idx = D.min(axis=1).argmin()
+            min_row = D[min_row_idx,:]
+            min_col_idx = min_row.argmin()
+            D[:,min_col_idx] = np.inf
+            mapping_dict[int(min_row_idx)] = int(min_col_idx)
+
+        return mapping_dict
+
+    def calculate_delta(self, mapping_dict:dict):
+
+        delta = np.zeros((len(self.last_path),2)) # (M,2)
+        
+        for k,v in mapping_dict.items():
+
+            p_start = self.last_path[k].pos
+            p_end = self.path[v].pos
+            delta[k,:] = [p_end[0]-p_start[0],p_end[1]-p_start[1]] # [dx,dy]
+        
+        delta /= self.config.frame_skips
+        return delta
+
+    def interpolate_path(self, delta):
+
+        path_list = []
+        for n in range(self.config.frame_skips-1):
+            _path = []
+            for idx, point in enumerate(self.last_path):
+                xy = point.pos
+                new_point = Point(int(xy[0]+(n+1)*delta[idx,0]), int(xy[1]+(n+1)*delta[idx,1]), point.type)
+                _path.append(new_point)
+            path_list.append(_path)
+
+        return path_list
 
     def path_to_mask(self, path: list[Point]): 
 
@@ -365,7 +429,7 @@ class SegTool():
                     spline_pixels[:,0] = np.minimum(spline_pixels[:,0], self.frame_shape[1]-1)
                     spline_pixels[:,1] = np.minimum(spline_pixels[:,1], self.frame_shape[0]-1)
 
-                    black_mask[spline_pixels[:,1],spline_pixels[:,0],:] = 255
+                    black_mask[spline_pixels[:,1],spline_pixels[:,0]] = 255
 
         # Render fill
         if path and (path[-1].type == "end"):
@@ -392,7 +456,6 @@ class SegTool():
         """ Writes frame input (H,W) format to video encoder """
         stacked_mask = np.stack((mask,mask,mask), axis=-1) 
         for _ in range(n):
-            if self.config.debug > 0: print(f"writing frame shape {stacked_mask.shape}")
             self.video_source.write(stacked_mask)
         return
 
@@ -430,6 +493,11 @@ class SegTool():
 
         # Update highlight
         if len(self.path) == 0: self.highlight = False
+    
+    def print_path(self, path):
+        for point_idx, point in enumerate(path):
+            print(f"Point {point_idx}, (x,y)=({point.pos}), type= {point.type}")
+
 
 
 
