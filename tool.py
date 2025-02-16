@@ -4,7 +4,7 @@ import copy
 import numpy as np
 from point import Point
 from config import Config
-from utils import distance_utils, curve_utils
+from utils import distance_utils, curve_utils, interpolation_utils
 
 
 class SegTool():
@@ -282,48 +282,32 @@ class SegTool():
         self.update_mode(mode=mode)
         
     
-
     def interpolate(self):
 
         if self.write_black_mask():
             if self.config.debug > 0: print("Wrote black mask to video")
             black_mask = np.zeros(self.frame_shape, dtype=np.uint8)
             self.write_frame(black_mask, n=self.config.frame_skips)
-        elif self.are_deep_copies():
+        elif interpolation_utils.are_deep_copies(self.last_path, self.path):
             if self.config.debug > 0: print("Wrote previous mask to video")
             mask = self.path_to_mask(self.last_path)
             self.write_frame(mask, n=self.config.frame_skips)
         else:
             if self.config.debug > 0: print("Performed interpolation")
 
-            # create pair-wise mapping between both paths
-            M = len(self.last_path)
-            N = len(self.path)
+            #D = self.distance_matrix()
+            point_mapping_dict = self.path_point_mapping()
+            delta = self.calculate_delta(point_mapping_dict)
 
-            p1_xy, p2_xy = self.get_path_to_point_vectors()
+            path_list = [self.last_path] + self.interpolate_path(delta, point_mapping_dict)
 
-            if N == M: # Same number of points
-
-                D = self.distance_matrix()
-                point_mapping_dict = self.path_point_mapping(D)
-                delta = self.calculate_delta(point_mapping_dict)
-                path_list = [self.last_path] + self.interpolate_path(delta) + [self.path]
-                frame_list = [self.path_to_mask(x) for x in path_list]
-                
-            else:
-                pass
-                raise NotImplementedError("Have not implemented for general case M != N")
+            # Create list of binary frames
+            binary_frame_list = [self.path_to_mask(x) for x in path_list]
+            assert len(binary_frame_list) == self.config.frame_skips
             
-            for _frame in frame_list:
+            for _frame in binary_frame_list:
                 self.write_frame(_frame)
     
-    def are_deep_copies(self):
-        if len(self.path) != len(self.last_path):
-            return False
-        for point1, point2 in zip(self.path, self.last_path):
-            if (point1.pos != point2.pos) or (point1.type != point2.type):
-                return False
-        return True
 
     def write_black_mask(self) -> bool:
         """ Returns True if we should write black mask to video """
@@ -336,14 +320,12 @@ class SegTool():
         else:
             return False
     
-    def get_path_to_point_vectors(self):
-
-        p1_xy = np.array([list(x.pos) for x in self.last_path]) # (M,2)
-        p2_xy = np.array([list(x.pos) for x in self.path]) # (N,2)
-        if self.config.debug > 0: print(p1_xy.shape, p2_xy.shape)
-        return p1_xy, p2_xy
     
     def distance_matrix(self):
+        """ 
+        Calculates distance matrix where element d_ij is distance between
+        point_i in last_path to point_j in path
+        """
         M = len(self.last_path)
         N = len(self.path)
         p1_xy = np.array([list(x.pos) for x in self.last_path]) # (M,2)
@@ -356,20 +338,21 @@ class SegTool():
 
         return D
     
-    def path_point_mapping(self, D: np.ndarray):
+    def path_point_mapping(self):
+        
+        # hash to point_idx
+        path_dict = {point.ID: point_idx for point_idx,point in enumerate(self.path)}
 
-        M = D.shape[0]
+        # Find the matching Hashes (use dictionaries)
         mapping_dict = {}
+        for point_idx, point in enumerate(self.last_path):
 
-        for m in range(M):
-            min_row_idx = D.min(axis=1).argmin()
-            min_row = D[min_row_idx,:]
-            min_col_idx = min_row.argmin()
-            D[:,min_col_idx] = np.inf
-            mapping_dict[int(min_row_idx)] = int(min_col_idx)
-
+            path_point_idx = path_dict.get(point.ID, None)
+            if path_point_idx is None: continue # NOTE this means point with point.ID was deleted 
+            mapping_dict[point_idx] = path_point_idx
+        
         return mapping_dict
-
+    
     def calculate_delta(self, mapping_dict:dict):
 
         delta = np.zeros((len(self.last_path),2)) # (M,2)
@@ -383,14 +366,17 @@ class SegTool():
         delta /= self.config.frame_skips
         return delta
 
-    def interpolate_path(self, delta):
+    def interpolate_path(self, delta, point_mapping):
+        print(point_mapping)
 
         path_list = []
         for n in range(self.config.frame_skips-1):
             _path = []
             for idx, point in enumerate(self.last_path):
-                xy = point.pos
-                new_point = Point(int(xy[0]+(n+1)*delta[idx,0]), int(xy[1]+(n+1)*delta[idx,1]), point.type)
+                _xy = point.pos
+                end_point_idx = point_mapping[idx]
+                _type = "spline" if (self.path[end_point_idx].type == "spline") else self.path[end_point_idx].type # if linear -> spline
+                new_point = Point(int(_xy[0]+(n+1)*delta[idx,0]), int(_xy[1]+(n+1)*delta[idx,1]), _type)
                 _path.append(new_point)
             path_list.append(_path)
 
