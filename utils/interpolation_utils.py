@@ -21,3 +21,18 @@ def are_deep_copies(last_path, path):
         if (point1.pos != point2.pos) or (point1.type != point2.type):
             return False
     return True
+
+
+def shortest_path_intersection(p1,p2,p3):
+    """
+    Find shortest path intersection from point p3 to line
+    going through points p1 and p2
+    """
+
+    d = p2 - p1
+    p3p1 = p3 - p1
+    projection = (np.dot(p3p1,d) / np.dot(d,d)) * d
+    orthogonal = p3p1 - projection
+    p_intersection = p3 - orthogonal
+    return p_intersection
+

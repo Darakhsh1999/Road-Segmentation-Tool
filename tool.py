@@ -296,8 +296,8 @@ class SegTool():
             if self.config.debug > 0: print("Performed interpolation")
 
             #D = self.distance_matrix()
-            point_mapping_dict = self.path_point_mapping()
-            delta = self.calculate_delta(point_mapping_dict)
+            point_mapping_dict, deleted_points, added_points = self.path_point_mapping()
+            delta = self.calculate_delta(point_mapping_dict, deleted_points, added_points)
 
             path_list = [self.last_path] + self.interpolate_path(delta, point_mapping_dict)
 
@@ -341,41 +341,73 @@ class SegTool():
     def path_point_mapping(self):
         
         # hash to point_idx
+        last_path_dict = {point.ID: point_idx for point_idx,point in enumerate(self.last_path)}
         path_dict = {point.ID: point_idx for point_idx,point in enumerate(self.path)}
 
         # Find the matching Hashes (use dictionaries)
         mapping_dict = {}
+        deleted_points = [] # list of deleted points in last_path
         for point_idx, point in enumerate(self.last_path):
 
             path_point_idx = path_dict.get(point.ID, None)
-            if path_point_idx is None: continue # NOTE this means point with point.ID was deleted 
-            mapping_dict[point_idx] = path_point_idx
-        
-        return mapping_dict
-    
-    def calculate_delta(self, mapping_dict:dict):
+            if path_point_idx is None: # point was deleted from last_path to path
+                deleted_points.append(point_idx)
+            else:
+                mapping_dict[point_idx] = path_point_idx
 
-        delta = np.zeros((len(self.last_path),2)) # (M,2)
+        # Find added points
+        added_points = [] # list of deleted points in last_path
+        for point_idx, point in enumerate(self.path):
+            path_point_idx = last_path_dict.get(point.ID, None)
+            if path_point_idx is None: # point was added from last_path to path
+                added_points.append(point_idx)
+
+        if self.config.debug > 0: print(f"Mapping dict {mapping_dict}, deleted: {deleted_points}, added:{added_points}")
+        return mapping_dict, deleted_points, added_points
+    
+    def calculate_delta(self, mapping_dict:dict, deleted_points: list, added_points: list):
+
+        delta = np.zeros((len(self.last_path)+len(added_points),2)) # (M,2)
         
+        # Delta for points with same ID
         for k,v in mapping_dict.items():
 
             p_start = self.last_path[k].pos
             p_end = self.path[v].pos
             delta[k,:] = [p_end[0]-p_start[0],p_end[1]-p_start[1]] # [dx,dy]
         
+        # Delta for deleted points
+        for deleted_point_idx in deleted_points:
+            p1 = np.array(self.last_path[deleted_point_idx-1].pos)
+            p2 = np.array(self.last_path[deleted_point_idx+1].pos)
+            p3 = np.array(self.last_path[deleted_point_idx].pos)
+            p_intersection = interpolation_utils.shortest_path_intersection(p1,p2,p3)
+            delta[deleted_point_idx,:] = [p_intersection[0]-p3[0],p_intersection[1]-p3[1]]
+
+        # Delta for added points
+        for added_point_idx in added_points:
+            p1 = np.array(self.last_path[deleted_point_idx-1].pos)
+            p2 = np.array(self.last_path[deleted_point_idx+1].pos)
+            p3 = np.array(self.last_path[deleted_point_idx].pos)
+            p_intersection = interpolation_utils.shortest_path_intersection(p1,p2,p3)
+        
         delta /= self.config.frame_skips
         return delta
 
-    def interpolate_path(self, delta, point_mapping):
+    def interpolate_path(self, delta, point_mapping: dict):
         print(point_mapping)
 
         path_list = []
         for n in range(self.config.frame_skips-1):
+
             _path = []
             for idx, point in enumerate(self.last_path):
                 _xy = point.pos
-                end_point_idx = point_mapping[idx]
-                _type = "spline" if (self.path[end_point_idx].type == "spline") else self.path[end_point_idx].type # if linear -> spline
+                end_point_idx = point_mapping.get(idx, None)
+                if end_point_idx is None: # deleted point
+                    _type = point.type
+                else:
+                    _type = "spline" if (self.path[end_point_idx].type == "spline") else self.path[end_point_idx].type # if linear -> spline
                 new_point = Point(int(_xy[0]+(n+1)*delta[idx,0]), int(_xy[1]+(n+1)*delta[idx,1]), _type)
                 _path.append(new_point)
             path_list.append(_path)

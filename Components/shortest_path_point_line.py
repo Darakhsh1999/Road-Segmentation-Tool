@@ -18,7 +18,7 @@ p3p1 = p3 - p1
 # shortest distance vector is orthogonal projection of P1->P3 on line d
 projection = (np.dot(p3p1,d) / (np.dot(d,d))) * d
 orthogonal = p3p1 - projection
-intersection = p3 - orthogonal
+p_intersection = p3 - orthogonal
 
 
 
@@ -26,7 +26,8 @@ intersection = p3 - orthogonal
 plt.scatter(P[:,0],P[:,1]) # all points
 plt.plot([p1[0],p2[0]], [p1[1],p2[1]], "-") # lines between p1 p2
 
-plt.plot([p3[0],intersection[0]], [p3[1],intersection[1]], "-") # lines between p3 intersection
+plt.plot([p3[0],p_intersection[0]], [p3[1],p_intersection[1]], "-") # lines between p3 intersection
+plt.scatter(p_intersection[0], p_intersection[1]) # intersection point
 
 
 plt.grid()
