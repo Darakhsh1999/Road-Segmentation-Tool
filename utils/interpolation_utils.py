@@ -28,7 +28,6 @@ def shortest_path_intersection(p1,p2,p3):
     Find shortest path intersection from point p3 to line
     going through points p1 and p2
     """
-
     d = p2 - p1
     p3p1 = p3 - p1
     projection = (np.dot(p3p1,d) / np.dot(d,d)) * d

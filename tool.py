@@ -368,75 +368,70 @@ class SegTool():
 
         # Delta for added points
         for idx,added_point_idx in enumerate(added_points):
-            p1 = np.array(self.last_path[added_point_idx-1].pos)
-            p2 = np.array(self.last_path[added_point_idx].pos)
+            p1 = np.array(self.path[added_point_idx-1].pos)
+            p2 = np.array(self.path[added_point_idx+1].pos)
             p3 = np.array(self.path[added_point_idx].pos)
             p_intersection = interpolation_utils.shortest_path_intersection(p1,p2,p3)
             delta_added[idx,:] = [p3[0]-p_intersection[0],p3[1]-p_intersection[1]]
         
-        delta /= self.config.frame_skips
-        delta_added /= self.config.frame_skips
+        delta = delta/float(self.config.frame_skips)
+        delta_added = delta_added/float(self.config.frame_skips)
         return delta, delta_added
 
+
     def interpolate_path(self, delta, delta_add, added_points, point_mapping: dict):
-
-        path_list = []
-        for n in range(1,self.config.frame_skips):
-
-            _path = []
-            
-            # Static and deleted points
-            for idx, point in enumerate(self.last_path):
-                _xy = point.pos
-                end_point_idx = point_mapping.get(idx, None)
-                if end_point_idx is None: # deleted point
-                    _type = point.type
-                else:
-                    _type = "spline" if (self.path[end_point_idx].type == "spline") else self.path[end_point_idx].type # if linear -> spline
-                new_point = Point(int(_xy[0]+n*delta[idx,0]), int(_xy[1]+n*delta[idx,1]), _type)
-                _path.append(new_point)
-            
-            # Added points
-            for idx, point_idx in enumerate(added_points):
-                _xy = np.array(self.path[point_idx].pos) - self.config.frame_skips * delta_add[idx,:]
-                _type = self.path[point_idx].type
-                new_point = Point(int(_xy[0]+n*delta_add[idx,0]), int(_xy[1]+n*delta_add[idx,1]), _type)
-                _path.insert(point_idx,new_point)
-            
-
-            path_list.append(_path)
-
-        return path_list
-
-    def interpolate_path_v2(self, delta, delta_add, added_points, point_mapping: dict):
+        print(f"Delta_add {delta_add}")
 
         path_list = []
         interpolation_path = copy.deepcopy(self.last_path)
-        hash_to_delta = {}
+        hash_to_delta = {} # key: point.id, value delta [dx,dy]
 
-        # Change to correct type
+        # Static and deleted points
+        for idx, point in enumerate(interpolation_path):
 
-        for n in range(1,self.config.frame_skips):
+            # Change to correct type
+            end_point_idx = point_mapping.get(idx, None)
+            if end_point_idx is not None: # linear -> spline from last_path to path
+                point.type = "spline" if (self.path[end_point_idx].type == "spline") else self.path[end_point_idx].type
 
+            # Hash to delta for static and deleted points
+            hash_to_delta[point.ID] = delta[idx,:]
+
+        # Insert added points
+        for idx, added_point_idx in enumerate(added_points):
             
-            # Static and deleted points
-            for idx, point in enumerate(self.last_path):
+            point = copy.copy(self.path[added_point_idx])
+
+            # offset its starting position
+            print(point.pos)
+            point.pos = np.array(point.pos) - self.config.frame_skips * delta_add[idx,:]
+            print(point.pos)
+
+            # ID of previous point
+            previous_id = self.path[added_point_idx-1].ID
+            previous_idx = self.hash_to_id(previous_id, interpolation_path)
+
+            # add to interpolation_path
+            add_idx = previous_idx+1
+            interpolation_path.insert(add_idx, point)
+
+            # Update hash with added points
+            hash_to_delta[point.ID] = delta_add[idx,:]
+
+
+        # Interpolate path
+        for i in range(1,self.config.frame_skips):
+
+            for idx, point in enumerate(interpolation_path):
+
+                # update pos
+                _delta = hash_to_delta[point.ID]
                 _xy = point.pos
-                end_point_idx = point_mapping.get(idx, None)
-                if end_point_idx is None: # deleted point
-                    _type = point.type
-                else:
-                    _type = "spline" if (self.path[end_point_idx].type == "spline") else self.path[end_point_idx].type # if linear -> spline
-                new_point = Point(int(_xy[0]+n*delta[idx,0]), int(_xy[1]+n*delta[idx,1]), _type)
-            
-            # Added points
-            for idx, point_idx in enumerate(added_points):
-                _xy = np.array(self.path[point_idx].pos) - self.config.frame_skips * delta_add[idx,:]
-                _type = self.path[point_idx].type
-                new_point = Point(int(_xy[0]+n*delta_add[idx,0]), int(_xy[1]+n*delta_add[idx,1]), _type)
-            
+                new_pos = (int(_xy[0]+_delta[0]), int(_xy[1]+_delta[1]))
+                point.pos = new_pos
 
-            path_list.append(interpolation_path)
+            copied_path = copy.deepcopy(interpolation_path) 
+            path_list.append(copied_path)
 
         return path_list
 
@@ -539,6 +534,13 @@ class SegTool():
 
         # Update highlight
         if len(self.path) == 0: self.highlight = False
+    
+    def hash_to_id(self,hash: str, path: list[Point]):
+        """ Gives the index of point in path with given hash """
+        for idx,point in enumerate(path):
+            if point.ID == hash:
+                return idx
+        return None
     
     def print_path(self, path):
         for point_idx, point in enumerate(path):
