@@ -284,22 +284,21 @@ class SegTool():
     
     def interpolate(self):
 
-        if self.write_black_mask():
+        if self.write_black_mask(): # not possible to interpolate
             if self.config.debug > 0: print("Wrote black mask to video")
             black_mask = np.zeros(self.frame_shape, dtype=np.uint8)
             self.write_frame(black_mask, n=self.config.frame_skips)
-        elif interpolation_utils.are_deep_copies(self.last_path, self.path):
+        elif interpolation_utils.are_deep_copies(self.last_path, self.path): # no change between frame skips
             if self.config.debug > 0: print("Wrote previous mask to video")
             mask = self.path_to_mask(self.last_path)
             self.write_frame(mask, n=self.config.frame_skips)
-        else:
+        else: # Interpolation
             if self.config.debug > 0: print("Performed interpolation")
 
-            #D = self.distance_matrix()
             point_mapping_dict, deleted_points, added_points = self.path_point_mapping()
-            delta = self.calculate_delta(point_mapping_dict, deleted_points, added_points)
+            delta, delta_add = self.calculate_delta(point_mapping_dict, deleted_points, added_points)
 
-            path_list = [self.last_path] + self.interpolate_path(delta, point_mapping_dict)
+            path_list = [self.last_path] + self.interpolate_path(delta, delta_add, added_points, point_mapping_dict)
 
             # Create list of binary frames
             binary_frame_list = [self.path_to_mask(x) for x in path_list]
@@ -319,24 +318,6 @@ class SegTool():
             return True
         else:
             return False
-    
-    
-    def distance_matrix(self):
-        """ 
-        Calculates distance matrix where element d_ij is distance between
-        point_i in last_path to point_j in path
-        """
-        M = len(self.last_path)
-        N = len(self.path)
-        p1_xy = np.array([list(x.pos) for x in self.last_path]) # (M,2)
-        p2_xy = np.array([list(x.pos) for x in self.path]) # (N,2)
-
-        D = np.zeros((M,N))
-        for m, p1 in enumerate(p1_xy):
-            for n, p2 in enumerate(p2_xy):
-                D[m,n] = np.linalg.norm(p1-p2)
-
-        return D
     
     def path_point_mapping(self):
         
@@ -367,7 +348,8 @@ class SegTool():
     
     def calculate_delta(self, mapping_dict:dict, deleted_points: list, added_points: list):
 
-        delta = np.zeros((len(self.last_path)+len(added_points),2)) # (M,2)
+        delta = np.zeros((len(self.last_path),2)) # (M,2)
+        delta_added = np.zeros((len(added_points),2)) # (n_added,2)
         
         # Delta for points with same ID
         for k,v in mapping_dict.items():
@@ -385,22 +367,25 @@ class SegTool():
             delta[deleted_point_idx,:] = [p_intersection[0]-p3[0],p_intersection[1]-p3[1]]
 
         # Delta for added points
-        for added_point_idx in added_points:
-            p1 = np.array(self.last_path[deleted_point_idx-1].pos)
-            p2 = np.array(self.last_path[deleted_point_idx+1].pos)
-            p3 = np.array(self.last_path[deleted_point_idx].pos)
+        for idx,added_point_idx in enumerate(added_points):
+            p1 = np.array(self.last_path[added_point_idx-1].pos)
+            p2 = np.array(self.last_path[added_point_idx].pos)
+            p3 = np.array(self.path[added_point_idx].pos)
             p_intersection = interpolation_utils.shortest_path_intersection(p1,p2,p3)
+            delta_added[idx,:] = [p3[0]-p_intersection[0],p3[1]-p_intersection[1]]
         
         delta /= self.config.frame_skips
-        return delta
+        delta_added /= self.config.frame_skips
+        return delta, delta_added
 
-    def interpolate_path(self, delta, point_mapping: dict):
-        print(point_mapping)
+    def interpolate_path(self, delta, delta_add, added_points, point_mapping: dict):
 
         path_list = []
-        for n in range(self.config.frame_skips-1):
+        for n in range(1,self.config.frame_skips):
 
             _path = []
+            
+            # Static and deleted points
             for idx, point in enumerate(self.last_path):
                 _xy = point.pos
                 end_point_idx = point_mapping.get(idx, None)
@@ -408,11 +393,54 @@ class SegTool():
                     _type = point.type
                 else:
                     _type = "spline" if (self.path[end_point_idx].type == "spline") else self.path[end_point_idx].type # if linear -> spline
-                new_point = Point(int(_xy[0]+(n+1)*delta[idx,0]), int(_xy[1]+(n+1)*delta[idx,1]), _type)
+                new_point = Point(int(_xy[0]+n*delta[idx,0]), int(_xy[1]+n*delta[idx,1]), _type)
                 _path.append(new_point)
+            
+            # Added points
+            for idx, point_idx in enumerate(added_points):
+                _xy = np.array(self.path[point_idx].pos) - self.config.frame_skips * delta_add[idx,:]
+                _type = self.path[point_idx].type
+                new_point = Point(int(_xy[0]+n*delta_add[idx,0]), int(_xy[1]+n*delta_add[idx,1]), _type)
+                _path.insert(point_idx,new_point)
+            
+
             path_list.append(_path)
 
         return path_list
+
+    def interpolate_path_v2(self, delta, delta_add, added_points, point_mapping: dict):
+
+        path_list = []
+        interpolation_path = copy.deepcopy(self.last_path)
+        hash_to_delta = {}
+
+        # Change to correct type
+
+        for n in range(1,self.config.frame_skips):
+
+            
+            # Static and deleted points
+            for idx, point in enumerate(self.last_path):
+                _xy = point.pos
+                end_point_idx = point_mapping.get(idx, None)
+                if end_point_idx is None: # deleted point
+                    _type = point.type
+                else:
+                    _type = "spline" if (self.path[end_point_idx].type == "spline") else self.path[end_point_idx].type # if linear -> spline
+                new_point = Point(int(_xy[0]+n*delta[idx,0]), int(_xy[1]+n*delta[idx,1]), _type)
+            
+            # Added points
+            for idx, point_idx in enumerate(added_points):
+                _xy = np.array(self.path[point_idx].pos) - self.config.frame_skips * delta_add[idx,:]
+                _type = self.path[point_idx].type
+                new_point = Point(int(_xy[0]+n*delta_add[idx,0]), int(_xy[1]+n*delta_add[idx,1]), _type)
+            
+
+            path_list.append(interpolation_path)
+
+        return path_list
+
+
 
     def path_to_mask(self, path: list[Point]): 
 
