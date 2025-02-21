@@ -24,8 +24,8 @@ There are 3 modes; Insert, Edit and Visual similar to VIM workflow. The differen
 
 Some examples of the annotated binary mask is shown below
 
-![example1](https://i.imgur.com/mCBQwDW)
+![Imagee1](https://github.com/user-attachments/assets/3de4e8bf-15ab-492d-8a5b-d52e0d2c979e)
 
-![example2](https://i.imgur.com/9Kf2GHz)
+![Imagee2](https://github.com/user-attachments/assets/907afe8a-ee7d-4cb1-a819-4d669ce762ab)
 
-![example3](https://i.imgur.com/VHGmrVw)
+![Imagee3](https://github.com/user-attachments/assets/9514811c-d3da-490f-aca4-8676f841b29a)
