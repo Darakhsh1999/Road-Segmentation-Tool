@@ -28,4 +28,3 @@ Some examples of the annotated binary mask is shown below
 
 ![Imagee2](https://github.com/user-attachments/assets/907afe8a-ee7d-4cb1-a819-4d669ce762ab)
 
-![Imagee3](https://github.com/user-attachments/assets/9514811c-d3da-490f-aca4-8676f841b29a)
