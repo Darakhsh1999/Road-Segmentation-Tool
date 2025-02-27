@@ -2,7 +2,7 @@ import cv2
 
 video_number = 7465
 source_path = r"C:\Users\arash\Documents\python projects\RST\Videos\ScenicDrive_short.mp4"
-binary_source_path = r"C:\Users\arash\Documents\python projects\RST\Videos\labeled\labeled_video7465.avi"
+binary_source_path = r"C:\Users\arash\Documents\python projects\RST\Videos\labeled\labeled_video1578.avi"
 source = cv2.VideoCapture(source_path)
 binary_source = cv2.VideoCapture(binary_source_path)
 cv2.namedWindow("root", cv2.WINDOW_NORMAL)
